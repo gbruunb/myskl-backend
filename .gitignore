@@ -9,7 +9,10 @@
 .idea/shelf
 
 # deps
-node_modules/
+.env
+dist
+node_modules
+.drizzle
 
 # env
 .env
