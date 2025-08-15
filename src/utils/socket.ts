@@ -32,6 +32,7 @@ export function initializeSocket(httpServer: HttpServer): SocketIOServer {
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "https://myskl.unbgbru.in.th",
+        "https://bemyskl.unbgbru.in.th",
         ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
       ],
       methods: ["GET", "POST"],
