@@ -33,6 +33,11 @@ app.get('/', (c) => {
   return c.text('Hello Hono!')
 })
 
+// Handle OPTIONS for all routes
+app.options('*', (c) => {
+  return c.text('', 204)
+})
+
 app.route('/api', users)
 app.route('/api/files', files)
 app.route('/api/projects', projects)
