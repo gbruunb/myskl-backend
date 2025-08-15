@@ -35,7 +35,7 @@ app.get('/', (c) => {
 
 // Handle OPTIONS for all routes
 app.options('*', (c) => {
-  return c.text('', 204)
+  return new Response(null, { status: 204 })
 })
 
 app.route('/api', users)
