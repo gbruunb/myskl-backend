@@ -35,7 +35,17 @@ app.get('/', (c) => {
 
 // Handle OPTIONS for all routes
 app.options('*', (c) => {
+  console.log('OPTIONS request received:', c.req.url)
   return new Response(null, { status: 204 })
+})
+
+// Also handle at root level
+app.all('*', async (c, next) => {
+  if (c.req.method === 'OPTIONS') {
+    console.log('CORS preflight for:', c.req.url)
+    return new Response(null, { status: 204 })
+  }
+  await next()
 })
 
 app.route('/api', users)
