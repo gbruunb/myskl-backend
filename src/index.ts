@@ -8,6 +8,8 @@ import files from './routes/files.js'
 import projects from './routes/projects.js'
 import skills from './routes/skills.js'
 import chat from './routes/chat.js'
+import roadmaps from './routes/roadmaps.js'
+import admin from './routes/admin.js'
 import { initializeBucket } from './services/s3.js'
 import { connectRedis, connectPubSub } from './utils/redis.js'
 import { initializeSocket } from './utils/socket.js'
@@ -19,8 +21,7 @@ app.use(
   cors({
     origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   })
 )
 
@@ -33,6 +34,8 @@ app.route('/api/files', files)
 app.route('/api/projects', projects)
 app.route('/api/skills', skills)
 app.route('/api/chat', chat)
+app.route('/api/roadmaps', roadmaps)
+app.route('/api/admin', admin)
 
 // Initialize services and start server
 async function startServer() {
@@ -64,22 +67,25 @@ async function startServer() {
 
       // Handle request with Hono
       const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
-      app.fetch(new Request(`http://localhost:${port}${req.url}`, {
+      const request = new Request(`http://localhost:${port}${req.url}`, {
         method: req.method,
         headers: req.headers as any,
         body: hasBody ? req : undefined,
         duplex: hasBody ? 'half' : undefined,
-      } as any)).then((response) => {
+      } as any);
+      
+      const responsePromise = app.fetch(request) as Promise<Response>;
+      responsePromise.then((response: Response) => {
         res.writeHead(response.status, Object.fromEntries(response.headers.entries()))
         if (response.body) {
           const reader = response.body.getReader()
           const pump = () => {
-            reader.read().then(({ done, value }) => {
-              if (done) {
+            reader.read().then((result) => {
+              if (result.done) {
                 res.end()
                 return
               }
-              res.write(value)
+              res.write(result.value)
               pump()
             })
           }
@@ -87,7 +93,7 @@ async function startServer() {
         } else {
           res.end()
         }
-      }).catch((error) => {
+      }).catch((error: any) => {
         console.error('Request handling error:', error);
         res.writeHead(500);
         res.end('Internal Server Error');

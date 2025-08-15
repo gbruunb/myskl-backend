@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import multer from 'multer';
 import { uploadFile, generatePresignedUploadUrl, generatePresignedDownloadUrl, deleteFile, getFileUrl, generateFileKey } from '../services/s3.js';
+import { db } from '../db/index.js';
+import { taskCertificates } from '../db/schema.js';
 
 const router = new Hono();
 
@@ -158,6 +160,57 @@ router.get('/url/:fileKey', async (c) => {
     console.error('Get file URL error:', error);
     return c.json({ 
       error: 'Failed to get file URL',
+      details: error.message 
+    }, 500);
+  }
+});
+
+// Upload certificate for a task
+router.post('/upload-certificate/:taskProgressId', async (c) => {
+  try {
+    const taskProgressId = c.req.param('taskProgressId');
+    const body = await c.req.parseBody();
+    
+    const certificateFile = body['certificate'] as File;
+    const certificateName = body['certificateName'] as string;
+    const source = body['source'] as string;
+    const issueDate = body['issueDate'] as string;
+    
+    if (!certificateFile) {
+      return c.json({ error: 'No certificate file provided' }, 400);
+    }
+
+    // Convert File to Buffer
+    const buffer = await certificateFile.arrayBuffer();
+    const fileBuffer = Buffer.from(buffer);
+    
+    // Generate unique key for certificate
+    const fileKey = generateFileKey(`certificates/${certificateFile.name}`);
+    
+    // Upload to S3
+    const fileUrl = await uploadFile(fileKey, fileBuffer, certificateFile.type);
+    
+    // Save certificate record to database
+    const [certificate] = await db
+      .insert(taskCertificates)
+      .values({
+        userTaskProgressId: parseInt(taskProgressId),
+        certificateName: certificateName || certificateFile.name,
+        certificateUrl: fileUrl,
+        certificateKey: fileKey,
+        source: source || null,
+        issueDate: issueDate ? new Date(issueDate) : null
+      })
+      .returning();
+    
+    return c.json({
+      message: 'Certificate uploaded successfully',
+      data: certificate
+    });
+  } catch (error: any) {
+    console.error('Certificate upload error:', error);
+    return c.json({ 
+      error: 'Certificate upload failed',
       details: error.message 
     }, 500);
   }

@@ -9,6 +9,8 @@ export const users = pgTable('users', {
   email: text('email').unique(),
   googleId: text('google_id').unique(),
   authProvider: varchar('auth_provider', { length: 20 }).default('local'), // 'local' or 'google'
+  role: varchar('role', { length: 20 }).default('user'), // 'user', 'admin'
+  isActive: boolean('is_active').default(true), // For admin to enable/disable users
   profilePicture: text('profile_picture'), // URL for profile picture
   profilePictureKey: text('profile_picture_key'), // S3 key for uploaded images
   googleProfilePicture: text('google_profile_picture'), // Original Google profile picture URL
@@ -78,4 +80,100 @@ export const messages = pgTable('messages', {
   messageType: varchar('message_type', { length: 20 }).default('text'), // text, image, file
   isRead: boolean('is_read').default(false),
   createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Skill roadmap templates
+export const skillRoadmaps = pgTable('skill_roadmaps', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(), // e.g., "Frontend Web Development"
+  description: text('description'),
+  category: varchar('category', { length: 50 }).notNull(),
+  icon: text('icon').default('fas fa-code'),
+  color: varchar('color', { length: 20 }).default('#3B82F6'),
+  estimatedDuration: text('estimated_duration'), // e.g., "3-6 months"
+  difficulty: varchar('difficulty', { length: 20 }).default('intermediate'), // beginner, intermediate, advanced
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Tasks within a roadmap
+export const roadmapTasks = pgTable('roadmap_tasks', {
+  id: serial('id').primaryKey(),
+  roadmapId: integer('roadmap_id').references(() => skillRoadmaps.id).notNull(),
+  title: text('title').notNull(), // e.g., "HTML Fundamentals"
+  description: text('description'),
+  orderIndex: integer('order_index').notNull(), // To maintain task order
+  estimatedHours: integer('estimated_hours'), // Time needed to complete
+  resources: text('resources'), // JSON array of learning resources
+  prerequisites: text('prerequisites'), // JSON array of prerequisite task IDs
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// User's progress on roadmaps
+export const userRoadmaps = pgTable('user_roadmaps', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  roadmapId: integer('roadmap_id').references(() => skillRoadmaps.id).notNull(),
+  status: varchar('status', { length: 20 }).default('active'), // active, completed, paused
+  startedAt: timestamp('started_at').defaultNow(),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// User's progress on individual tasks
+export const userTaskProgress = pgTable('user_task_progress', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  taskId: integer('task_id').references(() => roadmapTasks.id).notNull(),
+  userRoadmapId: integer('user_roadmap_id').references(() => userRoadmaps.id).notNull(),
+  status: varchar('status', { length: 20 }).default('pending'), // pending, in_progress, completed
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Certificates uploaded for tasks
+export const taskCertificates = pgTable('task_certificates', {
+  id: serial('id').primaryKey(),
+  userTaskProgressId: integer('user_task_progress_id').references(() => userTaskProgress.id).notNull(),
+  certificateName: text('certificate_name').notNull(),
+  certificateUrl: text('certificate_url'), // S3 URL
+  certificateKey: text('certificate_key'), // S3 key
+  source: text('source'), // Where the certificate is from
+  issueDate: timestamp('issue_date'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Projects submitted for tasks
+export const taskProjects = pgTable('task_projects', {
+  id: serial('id').primaryKey(),
+  userTaskProgressId: integer('user_task_progress_id').references(() => userTaskProgress.id).notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  githubUrl: text('github_url'),
+  demoUrl: text('demo_url'),
+  imageUrl: text('image_url'), // S3 URL
+  imageKey: text('image_key'), // S3 key
+  technologies: text('technologies'), // JSON string array
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Final projects for completed roadmaps
+export const roadmapFinalProjects = pgTable('roadmap_final_projects', {
+  id: serial('id').primaryKey(),
+  userRoadmapId: integer('user_roadmap_id').references(() => userRoadmaps.id).notNull(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  githubUrl: text('github_url'),
+  demoUrl: text('demo_url').notNull(), // Required for final project
+  imageUrl: text('image_url'), // S3 URL
+  imageKey: text('image_key'), // S3 key
+  technologies: text('technologies'), // JSON string array of all technologies used
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });

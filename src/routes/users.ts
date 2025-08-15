@@ -5,6 +5,7 @@ import { db } from '../db/index.js';
 import { users, connectionRequests, connections } from '../db/schema.js';
 import { getGoogleAuthUrl, getGoogleUserInfo, generateJWT } from '../config/google-auth.js';
 import { uploadFile, deleteFile, generateFileKey, getFileUrl } from '../services/s3.js';
+import { checkAdminRole } from '../middleware/admin.js';
 
 const router = new Hono();
 
@@ -201,6 +202,11 @@ router.post('/login', async (c) => {
     // Find user by username
     const user = await db.select().from(users).where(eq(users.username, username));
     if (user.length === 0) {
+      return c.json({ error: 'Invalid credentials' }, 401);
+    }
+
+    // Check if user has a password (for non-OAuth users)
+    if (!user[0].password) {
       return c.json({ error: 'Invalid credentials' }, 401);
     }
 
@@ -529,6 +535,11 @@ router.put('/change-password/:id', async (c) => {
     const user = await db.select().from(users).where(eq(users.id, userId));
     if (user.length === 0) {
       return c.json({ error: 'User not found' }, 404);
+    }
+
+    // Check if user has a password (for non-OAuth users)
+    if (!user[0].password) {
+      return c.json({ error: 'Cannot change password for OAuth users' }, 400);
     }
 
     // Verify current password
@@ -1051,6 +1062,27 @@ router.delete('/connections/disconnect', async (c) => {
   } catch (error) {
     console.error('Disconnect error:', error);
     return c.json({ error: 'Failed to disconnect' }, 500);
+  }
+});
+
+// Check if user is admin
+router.get('/check-admin/:id', async (c) => {
+  try {
+    const userId = parseInt(c.req.param('id'));
+    
+    if (isNaN(userId)) {
+      return c.json({ error: 'Invalid user ID' }, 400);
+    }
+
+    const isAdmin = await checkAdminRole(userId);
+    
+    return c.json({
+      success: true,
+      isAdmin
+    });
+  } catch (error) {
+    console.error('Check admin error:', error);
+    return c.json({ error: 'Failed to check admin status' }, 500);
   }
 });
 
