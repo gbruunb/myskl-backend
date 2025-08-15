@@ -19,7 +19,11 @@ const app = new Hono()
 app.use(
   '*',
   cors({
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: [
+      'http://localhost:5173', 
+      'http://127.0.0.1:5173',
+      ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
+    ],
     credentials: true,
     allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   })
@@ -54,7 +58,7 @@ async function startServer() {
     // Create HTTP server with proper request handling
     const server = createServer((req, res) => {
       // Set CORS headers for all requests
-      res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+      res.setHeader('Access-Control-Allow-Origin', req.headers.origin || 'http://localhost:5173');
       res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
