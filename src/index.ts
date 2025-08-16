@@ -24,6 +24,7 @@ app.use(
       'http://127.0.0.1:5173',
       'https://myskl.unbgbru.in.th',
       'https://bemyskl.unbgbru.in.th',
+      'http://myskl-backend-hhizi7-b66d3d-45-154-24-202.traefik.me',
       ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
     ],
     credentials: true,
