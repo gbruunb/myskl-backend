@@ -36,6 +36,11 @@ app.get('/', (c) => {
   return c.text('Hello Hono!')
 })
 
+app.get('/test', (c) => {
+  return c.text('testo')
+})
+
+
 // Handle OPTIONS for all routes
 app.options('*', (c) => {
   console.log('OPTIONS request received:', c.req.url)
